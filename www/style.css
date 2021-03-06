@@ -1,0 +1,14 @@
+#name {
+  background-color: #e2e2e2;
+}
+
+#meetingname {
+  background-color: #e2e2e2;
+}
+
+.btn-default:active, .btn-default.active, .open>.dropdown-toggle.btn-default {
+    color: #000;
+    background-color: #28b78d;
+}
+
+.nav-tabs {font-size: 2rem} 

@@ -1,0 +1,18 @@
+user,week,day,selected,start,end,meetingname
+admin,1,M,8am (0),2021-03-08,2021-03-22,thisisameeting
+admin,1,M,9am (0),2021-03-08,2021-03-22,thisisameeting
+admin,1,M,10am (0),2021-03-08,2021-03-22,thisisameeting
+admin,1,T,10am (0),2021-03-08,2021-03-22,thisisameeting
+admin,1,T,11am (0),2021-03-08,2021-03-22,thisisameeting
+admin,1,T,12pm (0),2021-03-08,2021-03-22,thisisameeting
+admin,1,W,12pm (0),2021-03-08,2021-03-22,thisisameeting
+admin,1,TH,1pm (0),2021-03-08,2021-03-22,thisisameeting
+admin,1,F,2pm (0),2021-03-08,2021-03-22,thisisameeting
+admin,2,M,8am (0),2021-03-08,2021-03-22,thisisameeting
+admin,2,M,9am (0),2021-03-08,2021-03-22,thisisameeting
+admin,2,M,10am (0),2021-03-08,2021-03-22,thisisameeting
+admin,2,T,,2021-03-08,2021-03-22,thisisameeting
+admin,2,W,12pm (0),2021-03-08,2021-03-22,thisisameeting
+admin,2,W,1pm (0),2021-03-08,2021-03-22,thisisameeting
+admin,2,TH,1pm (0),2021-03-08,2021-03-22,thisisameeting
+admin,2,F,8am (0),2021-03-08,2021-03-22,thisisameeting
