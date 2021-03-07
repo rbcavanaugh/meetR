@@ -1,4 +1,10 @@
-# fix top right button...just new action button and modal
+# fix overwritten problem with multiple users...read in two separate sheets. 
+# done category
+# run github
+# edit task choose with dropdown
+# regular shiny for mobile friendly
+# just enter name at start...probably no need for passwords
+
 
 
 '%!in%' <- function(x,y)!('%in%'(x,y))
@@ -6,11 +12,21 @@
 library(shiny)
 library(shinydashboard)
 library(shinyjs)
-library(shinythemes)
+library(glue)
+library(shinyauthr)
 library(shinyWidgets)
 library(lubridate)
 library(tidyverse)
 library(googlesheets4)
+
+jscode <- '
+shinyjs.init = function(){
+$(document).keyup(function(event) {
+    if ($("#login-password").is(":focus") && (event.keyCode == 13)) {
+        $("#login-button").click();
+    }
+});
+}'
 
 jscode2 <- '
 $(document).keyup(function(event) {
@@ -23,64 +39,75 @@ $(document).keyup(function(event) {
 source("www/link.R")
 source("www/counts.R")
 
+user_base <- readRDS("user_base.rds")
+#read_data <- read_sheet(link)
+#data_list = lapply( split(read_data,read_data$name), as.list)
+
+
+
 cs = c("8am", "9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm")
 
+
+
 ui <- fluidPage(
-    tags$head(
-        tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
-    ),
-    theme = shinytheme("paper"),
-    titlePanel(uiOutput("welcome"), windowTitle = "meetR"),
+    titlePanel("Welcome to the meeting app"),
     shinyjs::useShinyjs(),
-    fluidRow(
-             column(width = 12, style = "padding-left: 10%; padding-right: 10%; align:center;",
-             tabsetPanel(id = "tabSwitch", 
-                         tabPanel("Week 1",
-                                  fluidRow(uiOutput("week1")),
-                                  fluidRow(align = "center",
-                                           column(width = 1),
-                                           uiOutput("week_buttons_1"),
-                                           column(width = 1)
-                                  )
-                         ),
-                         tabPanel("Week 2",
-                                  fluidRow(uiOutput("week2")),
-                                  fluidRow(align = "center",
-                                           column(width = 1),
-                                           uiOutput("week_buttons_2"),
-                                           column(width = 1)
-                                  )
-                         ),
-                         tabPanel("Week 3",
-                                  fluidRow(uiOutput("week3")),
-                                  fluidRow(align = "center",
-                                           column(width = 1),
-                                           uiOutput("week_buttons_3"),
-                                           column(width = 1)
-                                  )
-                         ),
-                         tabPanel("check",
-                                  tableOutput("checktable")
-                                  )
-                         ),
-                     fluidRow(align="center",br(),
-                                      actionButton("save_user", "Save Meeting Times"),
-                                      actionButton("startover", "Start Over"),
-                              shinyjs::hidden(
-                                  div(id = "admin", style = "padding: 2%",
-                                          actionButton("adminupdate", "See only available"),
-                                          actionButton("admin_set", "Set meeting info")
+    useShinydashboard(),
+    extendShinyjs(text = jscode, functions = c()),
+    #######################################################################
+    shinyauthr::loginUI("login"),
+    #######################################################################
+    
+    conditionalPanel(condition = "output.authed == true",
+                     column(width = 12, style = "padding-left: 10%; padding-right: 10%; align:center;",
+
+                     tabsetPanel(id = "tabSwitch", 
+                                 tabPanel("Week 1",
+                                          fluidRow(uiOutput("week1")),
+                                          fluidRow(align = "center",
+                                                   column(width = 1),
+                                                   uiOutput("week_buttons_1"),
+                                                   column(width = 1)
                                           )
-                                  ),
-                              
-                              br(),
-                              br()
-                              
+                                 ),
+                                 tabPanel("Week 2",
+                                          fluidRow(uiOutput("week2")),
+                                          fluidRow(align = "center",
+                                                   column(width = 1),
+                                                   uiOutput("week_buttons_2"),
+                                                   column(width = 1)
+                                          )
+                                 ),
+                                 tabPanel("Week 3",
+                                          fluidRow(uiOutput("week3")),
+                                          fluidRow(align = "center",
+                                                   column(width = 1),
+                                                   uiOutput("week_buttons_3"),
+                                                   column(width = 1)
+                                          )
+                                 ),
+                                 tabPanel("check",
+                                          tableOutput("checktable")
+                                          )
+                                 ),
+                     conditionalPanel(condition = "output.admin_check == true",
+                                      column(width = 4,
+                                      textInput("meetingname", "Name of Meeting")
+                                      ),
+                                      column(width = 4,
+                                             dateRangeInput("daterange", "Select First Monday and Second Monday")
+                                             ),
+                                      column(width = 4,
+                                      actionButton("save_admin", "Create Meeting Times")
+                                      )
+                     ),
+                     conditionalPanel(condition = "output.admin_check == false", align = "center",
+                                      actionButton("save_user", "Save Meeting Times")
                      )
                      ),
-                     fluidRow(
-                     div(align = "center", style = "padding: 3%",
-                         actionBttn("done", "Done!", color = "success", style = "pill")
+                     column(width = 12,
+                     div(align = "center", style = "padding: 2%",
+                     shinyauthr::logoutUI("logout", label = "Done!")
                      )
                      )
                             
@@ -133,6 +160,27 @@ server <- function(input, output, session) {
                )
         )
     }
+    # create_tabPanel <- function(title_in, week_buttons, header){
+    #     tabPanel(title = title_in,
+    #              fluidRow(uiOutput(header)),
+    #              fluidRow(align = "center",
+    #                       column(width = 1),
+    #                       uiOutput(week_buttons),
+    #                       column(width = 1)
+    #              )
+    #     )
+    # }
+    # create_weeks <- function(weeks){
+    #     l = tibble()
+    #     for (i in 1:weeks){
+    #         l[i,1]=paste0("Week ", i)
+    #         l[i,2]=paste0("week_buttons_",i)
+    #         l[i,3]=paste0("week", i)
+    #     }
+    #     colnames(l) = c("title_in",  "week_buttons", "header")
+    #     return(l)
+    # }
+    
     weeks = 2
     buttons = create_buttons(weeks*5)
     vars = tibble(
@@ -142,37 +190,64 @@ server <- function(input, output, session) {
         choice_2 = rep(c('M', "T", "W", "TH", "F"),weeks),
         choice_3 = 0
     )
+ 
+    # output$tabs <- renderUI({
+    #     create_weeks(weeks) %>%
+    #         pmap(create_tabPanel)
+    # })
+    
+    
+    # login stuff
+    # credentialing
+    credentials <- callModule(shinyauthr::login, "login", 
+                              data = user_base,
+                              user_col = user,
+                              pwd_col = password_hash,
+                              sodium_hashed = TRUE,
+                              log_out = reactive(logout_init()))
+    logout_init <- callModule(shinyauthr::logout, "logout", reactive(credentials()$user_auth))
+    # get user info from credentialing
+    user_info <- reactiveValues()
+    observeEvent(credentials()$user_auth,{
+        req(credentials()$user_auth)
+        user_info$info = credentials()$info
+        user_info$name = credentials()$info$name
+        user_info$other = user_base %>% filter(name != as.character(credentials()$info$name)) %>% dplyr::select(name)
+    })
+    # hide stuff unless authed
+    output$authed <- reactive({
+        credentials()$user_auth==TRUE
+    })
+    outputOptions(output, "authed", suspendWhenHidden = FALSE)
     
     # Show the model on start up ...
-    modal = modalDialog(
+    observeEvent(dat_in(),{
+        req(credentials()$user_auth)
+    showModal(modalDialog(
         tags$script(HTML(jscode2)),
         title = "Enter Name",
         textInput("name", ""),
-        hidden(
-        checkboxInput("new", "New Schedule")
-        ),
         easyClose = F,size = "s",
         footer = tagList(
             actionButton("go", "Go!")
         )
-    )
-    showModal(modal)
+    ))
+    })
     # remove modal with go. 
     observeEvent(input$go, {
         removeModal()
     })
-    observeEvent(input$startover, {
-        showModal(modal)
-    })
     
     # check for admin
     output$admin_check <- reactive({
-        input$name=="rob-admin"
+        req(credentials()$user_auth)
+        credentials()$info$permissions=="admin"
     })
     outputOptions(output, "admin_check", suspendWhenHidden = FALSE)
     
     
     output$week1 <- renderUI({
+        req(credentials()$user_auth)
         dat = choice() %>%
             select(start) %>%
             distinct() %>%
@@ -184,6 +259,7 @@ server <- function(input, output, session) {
     })
     
     output$week2 <- renderUI({
+        req(credentials()$user_auth)
         dat = choice() %>%
             select(end) %>%
             distinct() %>%
@@ -195,67 +271,25 @@ server <- function(input, output, session) {
         )
     })
     
-    observeEvent(input$done, {
-        sendSweetAlert(
-            session = session,
-            title = "Thanks!",
-            text = "Keep an eye out for a meeting invite",
-            type = "success"
-        )
-    })
-    
-    observeEvent(input$name, {
-        if(weeks<3){
-        hideTab(inputId = "tabSwitch", target = "Week 3")
-        } else {}
-    })
-    
-    observeEvent(input$name,{
-    req(input$name)
-    if(input$name == "rob-admin"){
-        shinyjs::show("admin")
-        shinyjs::show("new")
-    } else {shinyjs::hide("new")}
-    })
-    
-    output$welcome <- renderUI({
-        req(input$name)
-        h1(paste0("Welcome ", input$name, "!"), align="center")
-    })
-    
-    
-    observeEvent(input$admin_set,{
-        showModal(modalDialog(
-            div(align = "center",
-                 title = "Enter meeting info",
-                textInput("meetingname", h4("Meeting Name")),
-                dateRangeInput("daterange", "Select First Monday and Second Monday"),
-                actionButton("save_admin", "Create Meeting Times")
-            ),
-                easyClose = T, size = "m"
-        ))
-                })
 
 ############# sheets stuff #######
     
     # read sheet
-    dat_in <- eventReactive(input$go,{
-        if(isTruthy(input$new)){
-            tibble(user=NA, week=NA, day=NA, selected=NA, start=NA, end=NA, meetingname=NA)
-        }else{ 
-            df = read_sheet(sheet = "available", ss = link) %>%
-                separate(selected, into = c("selected", "remove"), sep = -4) %>%
-                select(-remove)
-        }
+    dat_in <- reactive({
+        req(credentials()$user_auth)
+        #df = read_sheet(sheet = "available", ss = link)
+        df = read_csv('available.csv') %>%
+            separate(selected, into = c("selected", "remove"), sep = -4) %>%
+            select(-remove)
+        df
     })
             ########### reactive data comes in here#########
             counts <- reactive({
-                req(dat_in())
                 dat_in()  %>% drop_na(selected) %>% count(week, day, selected)
             })
             
             choice <- reactive({
-                req(dat_in())
+                req(credentials()$user_auth)
                 dat_in() %>%
                     filter(user == "admin")
             })
@@ -268,7 +302,7 @@ server <- function(input, output, session) {
                    start = input$daterange[1],
                    end = input$daterange[2],
                    meetingname= input$meetingname)
-        sheet_write(data = df, ss = link, sheet = "available")
+        #sheet_write(data = df, ss = link, sheet = "available")
     })
     # append sheet
     observeEvent(input$save_user,{
@@ -278,7 +312,7 @@ server <- function(input, output, session) {
             mutate(start = NA,
                    end = NA,
                    meetingname=NA)
-        sheet_append(data = df, ss = link, sheet = "available")
+        #sheet_append(data = df, ss = link, sheet = "available")
     })
     # check what table looks like. 
     output$checktable <- renderTable({
@@ -296,7 +330,6 @@ server <- function(input, output, session) {
 #### 10 pickeres ####
     
     output$week_buttons_1 <- renderUI({
-        req(dat_in())
         vars %>%
         filter(choice_1 == 1) %>%
         pmap(create_checkboxGroupButtons)
@@ -304,7 +337,6 @@ server <- function(input, output, session) {
     })
     
     output$week_buttons_2 <- renderUI({
-        req(dat_in())
         vars %>%
             filter(choice_1 == 2) %>%
             pmap(create_checkboxGroupButtons)
@@ -315,7 +347,7 @@ server <- function(input, output, session) {
 #### update pickers ####
     
     observeEvent(input$go,{
-        if(isTruthy(input$name!="rob-admin")){
+        if(isTruthy(credentials()$info$permissions=="standard")){
             vars %>%
                 filter(choice_1 == 1) %>%
                 select(button_id, choice_1, choice_2) %>%
@@ -324,25 +356,19 @@ server <- function(input, output, session) {
     })
     
     observeEvent(input$tabSwitch,{
-        if(isTruthy(input$name!="rob-admin")){
+        if(isTruthy(credentials()$info$permissions=="standard")){
+            
         vars %>%
             filter(choice_1 == 2) %>%
             select(button_id, choice_1, choice_2) %>%
             pmap(create_updateCheckboxGroupButtons)
      } else {}
         })
-    
-    observeEvent(input$adminupdate,{
-            vars %>%
-                select(button_id, choice_1, choice_2) %>%
-                pmap(create_updateCheckboxGroupButtons)
-    })
         
 
 #### functions!!! #####
     # save picker data
     data = reactive({
-        req(dat_in())
         bind_rows(
             list(
                 m1=  bind_rows(
