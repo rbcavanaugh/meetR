@@ -3,3 +3,5 @@
 .RData
 .Ruserdata
 .secrets
+link_sheets.R
+link.R
