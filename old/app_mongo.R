@@ -19,8 +19,11 @@ $(document).keyup(function(event) {
     }
 });'
 
+admin_name = "rob-admin"
 
-source("www/link.R")
+
+
+#source("www/link.R")
 
 cs = c("8am", "9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm")
 
@@ -122,7 +125,54 @@ server <- function(input, output, session) {
                )
         )
     }
-    
+    saveData <- function(data) {
+      #Connect to the database
+      db <- mongo(collection = collectionName,
+                  url = sprintf(
+                    "mongodb+srv://%s:%s@%s/%s",
+                    options()$mongodb$username,
+                    options()$mongodb$password,
+                    options()$mongodb$host,
+                    databaseName
+                  ),
+                  options = ssl_options(weak_cert_validation = TRUE,
+                                        allow_invalid_hostname = TRUE))
+      # Insert the data into the mongo collection as a data.frame
+      data <- as_data_frame(data)
+      db$insert(data)
+    }
+    newData <- function(data) {
+      #Connect to the database
+      db <- mongo(collection = collectionName,
+                  url = sprintf(
+                      "mongodb+srv://%s:%s@%s/%s",
+                      options()$mongodb$username,
+                      options()$mongodb$password,
+                      options()$mongodb$host,
+                      databaseName
+                  ),
+                  options = ssl_options(weak_cert_validation = TRUE,
+                                        allow_invalid_hostname = TRUE))
+      # Insert the data into the mongo collection as a data.frame
+      data <- as_tibble(data)
+      db$remove('{}')
+      db$insert(data)
+    }
+    loadData <- function() {
+      # Connect to the database
+      db <- mongo(collection = collectionName,
+                  url = sprintf(
+                    "mongodb+srv://%s:%s@%s/%s",
+                    options()$mongodb$username,
+                    options()$mongodb$password,
+                    options()$mongodb$host,
+                    databaseName
+                  ),
+                  options = ssl_options(weak_cert_validation = TRUE))
+      # Read all the entries
+      data <- db$find()
+      data
+    }
      vars = reactive({
         week_var = 4
         formatted = tibble(
