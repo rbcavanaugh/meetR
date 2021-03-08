@@ -15,6 +15,7 @@ $(document).keyup(function(event) {
     }
 });'
 
+gs4_auth(cache = ".secrets/", email = "robcav.shiny@gmail.com")
 source("www/link_sheets.R")
 
 ui <- fluidPage(
@@ -162,8 +163,9 @@ server <- function(input, output, session) {
     # Show the model on start up ...
     modal = modalDialog(
         tags$script(HTML(jscode2)),
-        title = "Enter Name",
-        textInput("name", ""),
+        title = "Enter your name to select available times",
+        textInput("name", "Name:"),
+        
         hidden(
             div(align = "center", id = "new",
                 checkboxInput("newbox", "New Schedule"),
@@ -177,6 +179,7 @@ server <- function(input, output, session) {
         ),
         easyClose = F,size = "m",
         footer = tagList(
+          p("Beta-version of scheduling app. Contact Rob with issues: rob.cavanaugh@pitt.edu", style = "float:left;"),
             actionButton("go", "Go!")
         )
     )
