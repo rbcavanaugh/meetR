@@ -243,7 +243,7 @@ server <- function(input, output, session) {
     })
     
     observeEvent(c(input$tabSwitch, input$go),{
-      if(isTruthy(input$name!="rob-admin")){
+      if(isTruthy(input$name!=admin_name)){
           max_week =  choice() %>% select(weeks) %>% distinct() %>% pull(weeks)
           max_week = paste0("Week ", max_week)
           if(isTruthy(max_week != input$tabSwitch)){
@@ -260,7 +260,7 @@ server <- function(input, output, session) {
     })
     
     output$next_done <- renderUI({
-      if(isTruthy(input$name!="rob-admin")){
+      if(isTruthy(input$name!=admin_name)){
         max_week =  choice() %>% select(weeks) %>% distinct() %>% pull(weeks)
         max_week = paste0("Week ", max_week)
         if(isTruthy(max_week != input$tabSwitch)){
