@@ -34,7 +34,7 @@ Publish the app. Send link to the meeting people. They fill out the app.
 
 <img src="www/enter.png" alt="Rob fills out his calendar." width="700"/>
 
-After everyone response, you see results and pick a time to meet. You
+After everyone responds, you see results and pick a time to meet. You
 don’t deal with ads. Now you deal with a sluggish shiny app.
 
 <img src="www/results.png" alt="now you see results! no ads. just higher risk for R not working" width="700"/>
