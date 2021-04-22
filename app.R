@@ -1,5 +1,6 @@
 # add 1 week timeframe to meeting
-
+# should probably make a non-public name of shiny app....
+# and add github link to all....
 
 library(shiny)
 library(shinyjs)
@@ -9,6 +10,7 @@ library(lubridate)
 library(tidyverse)
 library(googlesheets4)
 library(DT)
+library(waiter)
 
 jscode2 <- '
 $(document).keyup(function(event) {
@@ -25,6 +27,16 @@ ui <- fluidPage(
         tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
     ),
     theme = shinytheme("paper"),
+    div(id = "helpme", style = "float:right; position: top; margin-top: 10px; margin-right: 5px;",
+        dropdownButton(
+          icon = icon("info"),
+          status = "default",
+          p(icon("hand-pointer"), "Select the time slots you're available"),
+          p(icon("users"), "The number in parentheses shows how many people have selected each time slot"),
+          p(icon("bug"), "Contact rob with any issues: rob.cavanaugh@pitt.edu"),
+          right = T,
+          width = "300px"
+        )),
     titlePanel(uiOutput("welcome"), windowTitle = "meetR"),
     shinyjs::useShinyjs(),
     fluidRow(
@@ -131,7 +143,7 @@ server <- function(input, output, session) {
                    label = HTML(day_of),
                    choices = currentcount(choice_1, choice_2, ret=choice_3), #data_in = get(dat1), counts_in = get(dat2)
                    direction = "vertical"
-               )
+                   )
         )
     }
     
@@ -166,15 +178,14 @@ server <- function(input, output, session) {
     modal = modalDialog(
         tags$script(HTML(jscode2)),
         title = "Enter your name to select available times",
-        textInput("name", "Name:"),
-        
+        textInput("name", "Enter name:"),
         hidden(
             div(align = "center", id = "new",
                 checkboxInput("newbox", "New Schedule"),
                 div(id = "newmeeting",
                 textInput("meetingname", h4("Meeting Name")),
                 dateInput("daterange", "Select First Monday",daysofweekdisabled = c(0,2,3,4,5,6), autoclose = T),
-                radioButtons("num_weeks", "Number of Weeks", choices = c(2,3,4), inline = T, selected = 2),
+                radioButtons("num_weeks", "Number of Weeks", choices = c(1,2,3,4), inline = T, selected = 2),
                 checkboxInput("halfhour", "On the half hour?", value = F)
                 )
             )
@@ -212,7 +223,11 @@ server <- function(input, output, session) {
     observeEvent(dat_in(), {
         show_weeks = ifelse(nrow(choice()>0),unique(choice()$weeks),4)
         input_weeks = input$num_weeks
-        if(show_weeks<3 || input_weeks <3){
+        if(show_weeks<2 || input_weeks <2){
+          hideTab(inputId = "tabSwitch", target = "Week 2")
+          hideTab(inputId = "tabSwitch", target = "Week 3")
+          hideTab(inputId = "tabSwitch", target = "Week 4")
+        } else if(show_weeks<3 || input_weeks <3){
         hideTab(inputId = "tabSwitch", target = "Week 3")
         hideTab(inputId = "tabSwitch", target = "Week 4")
         } else if (show_weeks<4 || input_weeks <4) {
@@ -287,6 +302,7 @@ server <- function(input, output, session) {
     
     # read sheet
     dat_in <- eventReactive(input$go,{
+      
         if(isTruthy(input$newbox==T)){
             tibble(user=NA, week=NA, day=NA, selected=NA, start=NA, weeks=NA, meetingname=NA)
         }else{ 
@@ -308,6 +324,8 @@ server <- function(input, output, session) {
           )
           x
         }
+     
+      
     })
     
     
@@ -318,7 +336,7 @@ server <- function(input, output, session) {
                  start = as.Date(input$daterange),
                  weeks = input$num_weeks,
                  meetingname= input$meetingname)
-        range_write(df, ss = link, sheet = "available")
+        sheet_write(df, ss = link, sheet = "available")
         sendSweetAlert(
           session = session,
           title = "All Set!",
@@ -335,15 +353,20 @@ server <- function(input, output, session) {
           drop_na(selected) %>%
           mutate(start = NA,
                  end = NA,
-                 meetingname=NA)
+                 meetingname=NA,
+                 user = paste(user, sample(1:100,1), sep = "_"))
         sheet_append(df, ss = link, sheet = "available")
         sendSweetAlert(
           session = session,
           title = "Thanks!",
-          text = "Keep an eye out for a meeting invite",
+          text = tags$span(
+            tags$p("Keep an eye out for a meeting invite"),
+            tags$p("(you can close this window now)")
+          ),
           type = "success",
           btn_labels = NA,
           closeOnClickOutside = F,
+          html = T
         )
         } else {
           sendSweetAlert(
@@ -472,7 +495,7 @@ server <- function(input, output, session) {
                attending = "attending") %>%
         add_count(selected, day_of) %>%
         select(day_of, selected, n, attending, user) %>%
-        pivot_wider(names_from = attending, values_from = user) %>%
+        pivot_wider(names_from = attending, values_from = user) %>% #exploit annoying lost-cols feature :)
         arrange(desc(n)) %>%
         rowwise() %>%
         mutate(attending = toString((attending))) %>%
@@ -485,10 +508,7 @@ server <- function(input, output, session) {
                       columnDefs = list(list(width = '20%', targets = list(1,2)),
                                         list(className = 'dt-center', targets = 1:2))
                       ), filter = "top", rownames=F)
-    
-    
-    
-    
+
    
 }
 shiny::shinyApp(ui, server)
