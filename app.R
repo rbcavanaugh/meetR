@@ -1,6 +1,8 @@
 # add 1 week timeframe to meeting
 # should probably make a non-public name of shiny app....
 # and add github link to all....
+# wait 5s after done then kill app
+# fix done button for next. 
 
 library(shiny)
 library(shinyjs)
@@ -8,7 +10,6 @@ library(shinythemes)
 library(shinyWidgets)
 library(lubridate)
 library(tidyverse)
-library(googlesheets4)
 library(DT)
 library(waiter)
 
@@ -19,8 +20,9 @@ $(document).keyup(function(event) {
     }
 });'
 
-gs4_auth(cache = ".secrets/", email = "robcav.shiny@gmail.com")
 source("www/link_sheets.R")
+source("www/mongo_functions.R")
+
 
 ui <- fluidPage(
     tags$head(
@@ -179,6 +181,7 @@ server <- function(input, output, session) {
         tags$script(HTML(jscode2)),
         title = "Enter your name to select available times",
         textInput("name", "Enter name:"),
+        selectInput(inputId = "col_name", label = "Choose Schedule:", choices = current_collections),
         hidden(
             div(align = "center", id = "new",
                 checkboxInput("newbox", "New Schedule"),
@@ -305,9 +308,10 @@ server <- function(input, output, session) {
       
         if(isTruthy(input$newbox==T)){
             tibble(user=NA, week=NA, day=NA, selected=NA, start=NA, weeks=NA, meetingname=NA)
+            #mongo_deleteData(collectionName = "")
         }else{ 
           x <- tryCatch({
-              range_read(ss = link, sheet = "available") %>% #read_csv("available.csv") %>% #
+              mongo_loadData(collectionName = input$col_name) %>% #read_csv("available.csv") %>% #
                 separate(selected, into = c("selected", "remove"), sep = -4) %>%
                 select(-remove)
             },
@@ -336,7 +340,7 @@ server <- function(input, output, session) {
                  start = as.Date(input$daterange),
                  weeks = input$num_weeks,
                  meetingname= input$meetingname)
-        sheet_write(df, ss = link, sheet = "available")
+        mongo_saveData(df, collectionName = input$meetingname)
         sendSweetAlert(
           session = session,
           title = "All Set!",
@@ -355,7 +359,7 @@ server <- function(input, output, session) {
                  end = NA,
                  meetingname=NA,
                  user = paste(user, sample(1:100,1), sep = "_"))
-        sheet_append(df, ss = link, sheet = "available")
+        mongo_saveData(df, collectionName = input$col_name)
         sendSweetAlert(
           session = session,
           title = "Thanks!",
