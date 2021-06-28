@@ -109,93 +109,36 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-    # create_buttons <- function(num){
-    #     l = list()
-    #     buttons = for(i in 1:num){
-    #         l[[i]] = paste0('date', i, 'buttons')
-    #     }
-    #     return(unlist(l))
-    # }
-    # currentcount <- function(sel_week, sel_day, data_in, counts_in, ret = 1){
-    #   if(isTruthy(input$halfhour==TRUE)){
-    #   cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
-    #                        "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
-    #                        "4 pm", "4:30 pm", "5 pm", "5:30 pm")
-    #   } else if (isTruthy(unique(choice()[["halfhour"]])==1)) {
-    #     cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
-    #                       "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
-    #                       "4 pm", "4:30 pm", "5 pm", "5:30 pm")
-    #   } else {
-    #     cs = c("8 am", "9 am", "10 am", "11 am", "12 pm", "1 pm", "2 pm", "3 pm", "4 pm", "5 pm")
-    #   }
-    # 
-    #     l = list()
-    #     for (i in 1:length(cs)){
-    #         l[[i]] = paste0(cs[i], " (", counts() %>%
-    #                             dplyr::filter(week == sel_week, day == sel_day, selected == cs[i]) %>%
-    #                             dplyr::select(n) %>%
-    #                             pluck(1, .default = "0"), ")")
-    #     }
-    #     cs_new = unlist(l)
-    #     if(ret == 1){
-    #         return(cs_new[-c(choice() %>%
-    #                              dplyr::filter(week == sel_week, day == sel_day) %>%
-    #                              mutate(sel_num = match(selected, cs)) %>%
-    #                              dplyr::select(sel_num) %>%
-    #                              drop_na() %>%
-    #                              pluck(1,.default=50))])
-    #     } else {
-    #         return(cs_new)
-    #     }
-    # }
-    create_updateCheckboxGroupButtons <- function(button_id, choice_1, choice_2){ #dat1, dat2
+
+  
+  
+####  functions that I need to move to the R folder. ####
+  
+    create_updateCheckboxGroupButtons <- function(button_id, choice_1, choice_2){ 
         updateCheckboxGroupButtons(
             session = session, 
             inputId = button_id,
             disabledChoices = currentcount(sel_week=choice_1,sel_day=choice_2,
-                                           choice = choice(), counts = counts(), halfhour_in = input$halfhour) #, data_in = get(dat1), counts_in = get(dat2)
+                                           choice = choice(), counts = counts(), halfhour_in = input$halfhour) 
         )
     }
-    create_checkboxGroupButtons <- function(button_id, day_of, choice_1, choice_2, choice_3){ #, dat1, dat2
+    create_checkboxGroupButtons <- function(button_id, day_of, choice_1, choice_2, choice_3){ 
         column(width = 2,
                checkboxGroupButtons(
                    inputId = button_id,
                    label = HTML(day_of),
                    choices = currentcount(choice_1, choice_2, ret=choice_3,
-                                          choice = choice(), counts =counts(), halfhour_in = input$halfhour), #, data), #data_in = get(dat1), counts_in = get(dat2)
+                                          choice = choice(), counts =counts(), halfhour_in = input$halfhour), 
                    direction = "vertical"
                    )
         )
     }
-    
-     vars = reactive({
-        week_var = 4
-        formatted = tibble(
-            days = rep(c('Monday', "Tuesday", "Wednesday",
-                         "Thursday", "Friday", "Saturday", "Sunday"), week_var),
-            first_date = ifelse(nrow(choice()>0),
-                                rep(as.character(unique(choice()$start)),week_var*7),
-                                rep(as.character(input$daterange), week_var*7)
-                                ),
-            add = seq(1,7*week_var,1),
-            current_date = as.Date(first_date)+add-1) %>%
-          mutate(show_date = paste0(days, "<br/>", format(current_date, format="%b %d"))) %>%
-          filter(days != "Saturday", days != "Sunday")  %>%
-          pull(show_date)
 
-        vars = tibble(
-            button_id = create_buttons(week_var*5),
-            day_of = formatted,
-            choice_1 = rep(seq(1,week_var,1), each = 5),
-            choice_2 = rep(c('M', "T", "W", "TH", "F"),week_var),
-            choice_3 = 0
-        )
-
-    })
-        
 
     
-    # Show the model on start up ...
+####  A bunch of modal stuff ####
+    
+    
     modal = modalDialog(
         tags$script(HTML(jscode2)),
         title = "Enter your name to select available times",
@@ -203,6 +146,7 @@ server <- function(input, output, session) {
         selectInput(inputId = "col_name", label = "Choose Schedule:", choices = current_collections),
         hidden(
             div(align = "center", id = "new",
+                actionButton("delete", "Delete selected meeting", icon = icon("trash-alt"), class = "btn-warning"),
                 checkboxInput("newbox", "New Schedule"),
                 div(id = "newmeeting",
                 textInput("meetingname", h4("Meeting Name")),
@@ -227,12 +171,42 @@ server <- function(input, output, session) {
         showModal(modal)
         shinyjs::reset("tabSwitch")
     })
-    
     # check for admin
     output$admin_check <- reactive({
         input$name==admin_name
     })
     outputOptions(output, "admin_check", suspendWhenHidden = FALSE)
+    
+    
+    
+#### reactuve data stuff ####
+    
+    
+    
+    vars = reactive({
+      week_var = 4
+      formatted = tibble(
+        days = rep(c('Monday', "Tuesday", "Wednesday",
+                     "Thursday", "Friday", "Saturday", "Sunday"), week_var),
+        first_date = ifelse(nrow(choice()>0),
+                            rep(as.character(unique(choice()$start)),week_var*7),
+                            rep(as.character(input$daterange), week_var*7)
+        ),
+        add = seq(1,7*week_var,1),
+        current_date = as.Date(first_date)+add-1) %>%
+        mutate(show_date = paste0(days, "<br/>", format(current_date, format="%b %d"))) %>%
+        filter(days != "Saturday", days != "Sunday")  %>%
+        pull(show_date)
+      
+      vars = tibble(
+        button_id = create_buttons(week_var*5),
+        day_of = formatted,
+        choice_1 = rep(seq(1,week_var,1), each = 5),
+        choice_2 = rep(c('M', "T", "W", "TH", "F"),week_var),
+        choice_3 = 0
+      )
+      
+    })
     
     start_end = reactive({
           choice() %>%
@@ -240,6 +214,11 @@ server <- function(input, output, session) {
             distinct() %>%
             pull(weeks)
     })
+    
+    
+    
+#### Observers ####
+    
     
   
     observeEvent(dat_in(), {
@@ -268,11 +247,6 @@ server <- function(input, output, session) {
         }
     })
     
-    output$welcome <- renderUI({
-        req(input$name)
-        h3(paste0("Welcome ", input$name, "!"), align="center")
-    })
-    
     observeEvent(input$newbox,{
         if(isTruthy(input$newbox)){
         shinyjs::enable("newmeeting")
@@ -298,6 +272,21 @@ server <- function(input, output, session) {
       
     })
     
+    
+    observeEvent(input$nxt,{
+      current = as.numeric(str_sub(input$tabSwitch, -1))
+      new_week = paste0("Week ", current + 1)
+      updateTabsetPanel(session, "tabSwitch",selected = new_week)
+    })
+    
+    
+#### Outputs ####
+    
+    output$welcome <- renderUI({
+      req(input$name)
+      h3(paste0("Welcome ", input$name, "!"), align="center")
+    })
+    
     output$next_done <- renderUI({
       if(isTruthy(input$name!=admin_name)){
         max_week =  choice() %>% select(weeks) %>% distinct() %>% pull(weeks)
@@ -312,15 +301,9 @@ server <- function(input, output, session) {
       }
       
     })
-    
-    observeEvent(input$nxt,{
-      current = as.numeric(str_sub(input$tabSwitch, -1))
-      new_week = paste0("Week ", current + 1)
-      updateTabsetPanel(session, "tabSwitch",selected = new_week)
-    })
-    
 
-############# sheets stuff #######
+    
+#### sheets stuff ####
     
     # read sheet
     dat_in <- eventReactive(input$go,{
@@ -348,6 +331,25 @@ server <- function(input, output, session) {
           x
         }
      
+      
+    })
+    
+    dat_gone <- observeEvent(input$delete,{
+      x <- tryCatch({
+        mongo_deleteData(collectionName = input$col_name) 
+      },
+      error = function(e){
+        sendSweetAlert(
+          session = session,
+          title = "Gosh Darnit!",
+          text = "Accessing the server didn't work, try refreshing the page. Otherwise, contact Rob",
+          type = "error",
+          btn_labels = NA,
+          closeOnClickOutside = TRUE,
+        )
+      }
+      )
+      x
       
     })
     
@@ -564,7 +566,45 @@ shiny::shinyApp(ui, server)
 
 
 
-
+# create_buttons <- function(num){
+#     l = list()
+#     buttons = for(i in 1:num){
+#         l[[i]] = paste0('date', i, 'buttons')
+#     }
+#     return(unlist(l))
+# }
+# currentcount <- function(sel_week, sel_day, data_in, counts_in, ret = 1){
+#   if(isTruthy(input$halfhour==TRUE)){
+#   cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
+#                        "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
+#                        "4 pm", "4:30 pm", "5 pm", "5:30 pm")
+#   } else if (isTruthy(unique(choice()[["halfhour"]])==1)) {
+#     cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
+#                       "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
+#                       "4 pm", "4:30 pm", "5 pm", "5:30 pm")
+#   } else {
+#     cs = c("8 am", "9 am", "10 am", "11 am", "12 pm", "1 pm", "2 pm", "3 pm", "4 pm", "5 pm")
+#   }
+# 
+#     l = list()
+#     for (i in 1:length(cs)){
+#         l[[i]] = paste0(cs[i], " (", counts() %>%
+#                             dplyr::filter(week == sel_week, day == sel_day, selected == cs[i]) %>%
+#                             dplyr::select(n) %>%
+#                             pluck(1, .default = "0"), ")")
+#     }
+#     cs_new = unlist(l)
+#     if(ret == 1){
+#         return(cs_new[-c(choice() %>%
+#                              dplyr::filter(week == sel_week, day == sel_day) %>%
+#                              mutate(sel_num = match(selected, cs)) %>%
+#                              dplyr::select(sel_num) %>%
+#                              drop_na() %>%
+#                              pluck(1,.default=50))])
+#     } else {
+#         return(cs_new)
+#     }
+# }
 
 
 
