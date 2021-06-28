@@ -3,6 +3,7 @@
 # and add github link to all....
 # wait 5s after done then kill app
 # fix done button for next. 
+# cards for plot and switching button thing
 
 library(shiny)
 library(shinyjs)
@@ -20,8 +21,8 @@ $(document).keyup(function(event) {
     }
 });'
 
-source("www/link_sheets.R")
-source("www/mongo_functions.R")
+# source("www/link_sheets.R")
+# source("www/mongo_functions.R")
 
 
 ui <- fluidPage(
@@ -73,13 +74,29 @@ ui <- fluidPage(
                                   )
                          ),
                          tabPanel("Results",br(),
-                                  div(align = "center",
-                                  DTOutput("result", width ="80%")
-                                  ),br(),
-                                  div(align = "right", 
-                                  HTML("<p>To filter out a person, paste ^((?!name).)*$ into the attending 
+                                  radioButtons("plot_table", "Plot or Table", choices = c("Plot", "Table"),
+                                               selected = "Plot", inline = T),
+                                  tabsetPanel(type ="hidden", id = "results_tabs",
+                                    tabPanel("Plotpanel",
+                                      div(align = "center",
+                                          id = "result_plot",
+                                          plotOutput("plot")
+                                          )
+                                    ),
+                                    tabPanel("Tablepanel",
+                                      div(
+                                        align = "center",
+                                        id = "result_table",
+                                        DTOutput("result", width ="80%")
+                                    ),
+                                    br(),
+                                    div(align = "right", 
+                                        HTML("<p>To filter out a person, paste ^((?!name).)*$ into the attending 
                                        filter <br/> for example: ^((?!Rob).)*$ will filter out rows that contain Rob<p/>")
-                                  )
+                                       )
+                                    )
+                                    )
+                                    
                          )
              )
              )
@@ -92,50 +109,51 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-    create_buttons <- function(num){
-        l = list()
-        buttons = for(i in 1:num){
-            l[[i]] = paste0('date', i, 'buttons')
-        }
-        return(unlist(l))
-    }
-    currentcount <- function(sel_week, sel_day, data_in, counts_in, ret = 1){
-      if(isTruthy(input$halfhour==TRUE)){
-      cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
-                           "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
-                           "4 pm", "4:30 pm", "5 pm", "5:30 pm")
-      } else if (isTruthy(unique(choice()[["halfhour"]])==1)) {
-        cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
-                          "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
-                          "4 pm", "4:30 pm", "5 pm", "5:30 pm")
-      } else {
-        cs = c("8 am", "9 am", "10 am", "11 am", "12 pm", "1 pm", "2 pm", "3 pm", "4 pm", "5 pm")
-      }
-
-        l = list()
-        for (i in 1:length(cs)){
-            l[[i]] = paste0(cs[i], " (", counts() %>%
-                                dplyr::filter(week == sel_week, day == sel_day, selected == cs[i]) %>%
-                                dplyr::select(n) %>%
-                                pluck(1, .default = "0"), ")")
-        }
-        cs_new = unlist(l)
-        if(ret == 1){
-            return(cs_new[-c(choice() %>%
-                                 dplyr::filter(week == sel_week, day == sel_day) %>%
-                                 mutate(sel_num = match(selected, cs)) %>%
-                                 dplyr::select(sel_num) %>%
-                                 drop_na() %>%
-                                 pluck(1,.default=50))])
-        } else {
-            return(cs_new)
-        }
-    }
+    # create_buttons <- function(num){
+    #     l = list()
+    #     buttons = for(i in 1:num){
+    #         l[[i]] = paste0('date', i, 'buttons')
+    #     }
+    #     return(unlist(l))
+    # }
+    # currentcount <- function(sel_week, sel_day, data_in, counts_in, ret = 1){
+    #   if(isTruthy(input$halfhour==TRUE)){
+    #   cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
+    #                        "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
+    #                        "4 pm", "4:30 pm", "5 pm", "5:30 pm")
+    #   } else if (isTruthy(unique(choice()[["halfhour"]])==1)) {
+    #     cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
+    #                       "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
+    #                       "4 pm", "4:30 pm", "5 pm", "5:30 pm")
+    #   } else {
+    #     cs = c("8 am", "9 am", "10 am", "11 am", "12 pm", "1 pm", "2 pm", "3 pm", "4 pm", "5 pm")
+    #   }
+    # 
+    #     l = list()
+    #     for (i in 1:length(cs)){
+    #         l[[i]] = paste0(cs[i], " (", counts() %>%
+    #                             dplyr::filter(week == sel_week, day == sel_day, selected == cs[i]) %>%
+    #                             dplyr::select(n) %>%
+    #                             pluck(1, .default = "0"), ")")
+    #     }
+    #     cs_new = unlist(l)
+    #     if(ret == 1){
+    #         return(cs_new[-c(choice() %>%
+    #                              dplyr::filter(week == sel_week, day == sel_day) %>%
+    #                              mutate(sel_num = match(selected, cs)) %>%
+    #                              dplyr::select(sel_num) %>%
+    #                              drop_na() %>%
+    #                              pluck(1,.default=50))])
+    #     } else {
+    #         return(cs_new)
+    #     }
+    # }
     create_updateCheckboxGroupButtons <- function(button_id, choice_1, choice_2){ #dat1, dat2
         updateCheckboxGroupButtons(
             session = session, 
             inputId = button_id,
-            disabledChoices = currentcount(sel_week=choice_1,sel_day=choice_2) #, data_in = get(dat1), counts_in = get(dat2)
+            disabledChoices = currentcount(sel_week=choice_1,sel_day=choice_2,
+                                           choice = choice(), counts = counts(), halfhour_in = input$halfhour) #, data_in = get(dat1), counts_in = get(dat2)
         )
     }
     create_checkboxGroupButtons <- function(button_id, day_of, choice_1, choice_2, choice_3){ #, dat1, dat2
@@ -143,7 +161,8 @@ server <- function(input, output, session) {
                checkboxGroupButtons(
                    inputId = button_id,
                    label = HTML(day_of),
-                   choices = currentcount(choice_1, choice_2, ret=choice_3), #data_in = get(dat1), counts_in = get(dat2)
+                   choices = currentcount(choice_1, choice_2, ret=choice_3,
+                                          choice = choice(), counts =counts(), halfhour_in = input$halfhour), #, data), #data_in = get(dat1), counts_in = get(dat2)
                    direction = "vertical"
                    )
         )
@@ -188,7 +207,7 @@ server <- function(input, output, session) {
                 div(id = "newmeeting",
                 textInput("meetingname", h4("Meeting Name")),
                 dateInput("daterange", "Select First Monday",daysofweekdisabled = c(0,2,3,4,5,6), autoclose = T),
-                radioButtons("num_weeks", "Number of Weeks", choices = c(1,2,3,4), inline = T, selected = 2),
+                radioButtons("num_weeks", "Number of Weeks", choices = c(1,2,3,4), inline = T, selected = 4),
                 checkboxInput("halfhour", "On the half hour?", value = F)
                 )
             )
@@ -224,7 +243,7 @@ server <- function(input, output, session) {
     
   
     observeEvent(dat_in(), {
-        show_weeks = ifelse(nrow(choice()>0),unique(choice()$weeks),4)
+        show_weeks = ifelse(nrow(choice()>0),max(unique(choice()$weeks)),4)
         input_weeks = input$num_weeks
         if(show_weeks<2 || input_weeks <2){
           hideTab(inputId = "tabSwitch", target = "Week 2")
@@ -487,7 +506,31 @@ server <- function(input, output, session) {
       out
       
       })
-
+    
+    observeEvent(input$plot_table, {
+      updateTabsetPanel(session, "results_tabs", selected = paste0(input$plot_table, "panel"))
+    })
+    
+    output$plot <- renderPlot({
+      var = vars() %>% select(week = choice_1, day = choice_2, day_of)
+      dat_in() %>%
+        left_join(var, by = c('week', 'day')) %>%
+        drop_na(selected) %>%
+        filter(user != "admin") %>%
+        mutate(day_of = gsub("<br/>", " ", day_of),
+               full_time = paste(day_of, selected, sep = ": ")) %>%
+        add_count(full_time) %>%
+        arrange(desc(n)) %>%
+        select(user, full_time, n) %>%
+        ggplot(aes(x = fct_reorder(full_time,n), y=1, fill = user)) +
+        geom_bar(stat = "identity") +
+        geom_text(aes(label=user), position = position_stack(vjust = .5), size = 3.5) +
+        coord_flip() +
+        theme_minimal(base_size = 16) +
+        theme(panel.grid = element_blank()) +
+        ylab("Number of people available") +
+        xlab(NULL)
+    })
     
     output$result <- renderDT({
       attendees = dat_in() %>% select(user) %>% distinct() %>% pull(user)
