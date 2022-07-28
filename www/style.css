@@ -12,3 +12,8 @@
 }
 
 .nav-tabs {font-size: 2rem} 
+
+.shiny-output-error-validation {
+        color: black;
+        font-size: 2em;
+      }

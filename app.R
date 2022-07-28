@@ -138,24 +138,27 @@ server <- function(input, output, session) {
     
 ####  A bunch of modal stuff ####
     
-    
+  values <- reactiveValues()
+
     modal = modalDialog(
         tags$script(HTML(jscode2)),
         title = "Enter your name to select available times",
         textInput("name", "Enter name:"),
-        selectInput(inputId = "col_name", label = "Choose Schedule:", choices = current_collections),
+        selectInput(inputId = "col_name", label = "Choose Schedule:", choices = properties$name),
         hidden(
             div(align = "center", id = "new",
-                actionButton("delete", "Delete selected meeting", icon = icon("trash-alt"), class = "btn-warning"),
                 checkboxInput("newbox", "New Schedule"),
                 div(id = "newmeeting",
                 textInput("meetingname", h4("Meeting Name")),
                 dateInput("daterange", "Select First Monday",daysofweekdisabled = c(0,2,3,4,5,6), autoclose = T),
                 radioButtons("num_weeks", "Number of Weeks", choices = c(1,2,3,4), inline = T, selected = 4),
                 checkboxInput("halfhour", "On the half hour?", value = F)
-                )
+                ),
+                actionButton("delete", "Delete selected meeting", icon = icon("trash-alt"))
             )
         ),
+        
+        
         easyClose = F,size = "m",
         footer = tagList(
           p("Beta-version of scheduling app. Contact Rob with issues: rob.cavanaugh@pitt.edu", style = "float:left;"),
@@ -173,6 +176,7 @@ server <- function(input, output, session) {
     })
     # check for admin
     output$admin_check <- reactive({
+      req(input$name)
         input$name==admin_name
     })
     outputOptions(output, "admin_check", suspendWhenHidden = FALSE)
@@ -309,11 +313,13 @@ server <- function(input, output, session) {
     dat_in <- eventReactive(input$go,{
       
         if(isTruthy(input$newbox==T)){
-            tibble(user=NA, week=NA, day=NA, selected=NA, start=NA, weeks=NA, meetingname=NA)
-            #mongo_deleteData(collectionName = "")
+            tmp = tibble(user=NA, week=NA, day=NA, halfhour=NA, selected=NA, start=NA, weeks=NA, meetingname=NA)
+            googlesheets4::sheet_write(ss=link, sheet = input$meetingname, data = tmp)
+            return(tmp)
+            
         }else{ 
           x <- tryCatch({
-              mongo_loadData(collectionName = input$col_name) %>% #read_csv("available.csv") %>% #
+              googlesheets4::read_sheet(ss = link, sheet = input$col_name) %>% #read_csv("available.csv") %>% #
                 separate(selected, into = c("selected", "remove"), sep = -4) %>%
                 select(-remove)
             },
@@ -336,7 +342,11 @@ server <- function(input, output, session) {
     
     dat_gone <- observeEvent(input$delete,{
       x <- tryCatch({
-        mongo_deleteData(collectionName = input$col_name) 
+        googlesheets4::sheet_delete(ss = link, sheet = input$col_name) 
+        values$properties <- googlesheets4::sheet_properties(ss=link)
+        print(values$properties)
+        updateSelectInput("col_name", session = session, choices = values$properties$name, selected = NULL)
+        
       },
       error = function(e){
         sendSweetAlert(
@@ -361,7 +371,8 @@ server <- function(input, output, session) {
                  start = as.Date(input$daterange),
                  weeks = input$num_weeks,
                  meetingname= input$meetingname)
-        mongo_saveData(df, collectionName = input$meetingname)
+        print(df)
+        googlesheets4::sheet_append(ss=link, data = df, sheet = input$meetingname)
         sendSweetAlert(
           session = session,
           title = "All Set!",
@@ -380,7 +391,7 @@ server <- function(input, output, session) {
                  end = NA,
                  meetingname=NA,
                  user = paste(user, sample(1:100,1), sep = "_"))
-        mongo_saveData(df, collectionName = input$col_name)
+        googlesheets4::sheet_append(ss=link, data = df, sheet = input$col_name)
         sendSweetAlert(
           session = session,
           title = "Thanks!",
@@ -514,6 +525,7 @@ server <- function(input, output, session) {
     })
     
     output$plot <- renderPlot({
+      validate(need(length(unique(dat_in()$user))>2, "Not enough responders to show plot"))
       var = vars() %>% select(week = choice_1, day = choice_2, day_of)
       dat_in() %>%
         left_join(var, by = c('week', 'day')) %>%
@@ -561,51 +573,5 @@ server <- function(input, output, session) {
    
 }
 shiny::shinyApp(ui, server)
-
-
-
-
-
-# create_buttons <- function(num){
-#     l = list()
-#     buttons = for(i in 1:num){
-#         l[[i]] = paste0('date', i, 'buttons')
-#     }
-#     return(unlist(l))
-# }
-# currentcount <- function(sel_week, sel_day, data_in, counts_in, ret = 1){
-#   if(isTruthy(input$halfhour==TRUE)){
-#   cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
-#                        "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
-#                        "4 pm", "4:30 pm", "5 pm", "5:30 pm")
-#   } else if (isTruthy(unique(choice()[["halfhour"]])==1)) {
-#     cs = c("8 am", "8:30 am", "9 am", "9:30 am", "10 am", "10:30 am", "11 am", "11:30 am",
-#                       "12 pm", "12:30 pm", "1 pm", "1:30 pm", "2 pm", "2:30 pm", "3 pm", "3:30pm",
-#                       "4 pm", "4:30 pm", "5 pm", "5:30 pm")
-#   } else {
-#     cs = c("8 am", "9 am", "10 am", "11 am", "12 pm", "1 pm", "2 pm", "3 pm", "4 pm", "5 pm")
-#   }
-# 
-#     l = list()
-#     for (i in 1:length(cs)){
-#         l[[i]] = paste0(cs[i], " (", counts() %>%
-#                             dplyr::filter(week == sel_week, day == sel_day, selected == cs[i]) %>%
-#                             dplyr::select(n) %>%
-#                             pluck(1, .default = "0"), ")")
-#     }
-#     cs_new = unlist(l)
-#     if(ret == 1){
-#         return(cs_new[-c(choice() %>%
-#                              dplyr::filter(week == sel_week, day == sel_day) %>%
-#                              mutate(sel_num = match(selected, cs)) %>%
-#                              dplyr::select(sel_num) %>%
-#                              drop_na() %>%
-#                              pluck(1,.default=50))])
-#     } else {
-#         return(cs_new)
-#     }
-# }
-
-
 
 
